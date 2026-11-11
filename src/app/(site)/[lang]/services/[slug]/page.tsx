@@ -4,7 +4,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowIcon } from "@/components/icons";
 import { Chapter, Cta, Kick, ScrollLink, SubHero, Ticks, two } from "@/components/ui";
-import { IMG, LOCALES, SERVICES, getService, qualsOf, t } from "@/lib/content";
+import { IMG, LOCALES, SERVICES } from "@/lib/content";
+import { getSiteData, qualsOf } from "@/lib/site";
 import { getLang } from "@/lib/page";
 import { alternates, href } from "@/lib/paths";
 
@@ -15,11 +16,12 @@ export const generateStaticParams = () => LOCALES.flatMap((lang) => SERVICES.map
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await getLang(params);
-  const s = getService((await params).slug);
+  const { slug } = await params;
+  const s = (await getSiteData(lang)).services.find((x) => x.slug === slug);
   if (!s) return {};
   return {
-    title: s[lang].name,
-    description: s[lang].lead,
+    title: s.t.name,
+    description: s.t.lead,
     alternates: alternates(lang, `/services/${s.slug}`),
     openGraph: { images: [{ url: s.img }] },
   };
@@ -28,19 +30,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ServiceDetailPage({ params }: Props) {
   const lang = await getLang(params);
   const { slug } = await params;
-  const i = SERVICES.findIndex((s) => s.slug === slug);
+  const site = await getSiteData(lang);
+  const i = site.services.findIndex((s) => s.slug === slug);
   if (i < 0) notFound();
-  const s = SERVICES[i];
-  const sd = s[lang];
-  const d = t(lang);
+  const s = site.services[i];
+  const sd = s.t;
+  const d = site.d;
   const dt = d.detail;
-  const q = qualsOf(s, lang);
+  const q = qualsOf(s);
   const ctaTitle = lang === "vi" ? `Cần ${sd.name.toLowerCase()} tại công trường?` : `Need ${sd.name.toLowerCase()} on site?`;
 
   return (
     <>
       <SubHero
-        lang={lang}
+        site={site}
         img={s.img}
         crumbs={[[d.nav.services, href(lang, "/services")], [sd.name]]}
         kicker={sd.name}
@@ -113,13 +116,13 @@ export default async function ServiceDetailPage({ params }: Props) {
             <h2 className="h2">{dt.othersTitle}</h2>
           </div>
           <div className="g3">
-            {SERVICES.map((o, j) =>
+            {site.services.map((o, j) =>
               o.slug === slug ? null : (
                 <Link className="card" href={href(lang, `/services/${o.slug}`)} key={o.slug}>
-                  <Image src={o.img} alt={o[lang].alt} width={800} height={600} sizes="(max-width: 640px) 100vw, (max-width: 980px) 50vw, 400px" />
+                  <Image src={o.img} alt={o.t.alt} width={800} height={600} sizes="(max-width: 640px) 100vw, (max-width: 980px) 50vw, 400px" />
                   <span className="card-k">{two(j)}</span>
-                  <span className="h3">{o[lang].name}</span>
-                  <p className="small">{o[lang].lead}</p>
+                  <span className="h3">{o.t.name}</span>
+                  <p className="small">{o.t.lead}</p>
                   <span className="more">
                     {d.more} <ArrowIcon />
                   </span>
@@ -130,7 +133,7 @@ export default async function ServiceDetailPage({ params }: Props) {
         </div>
       </section>
 
-      <Cta lang={lang} title={ctaTitle} />
+      <Cta site={site} title={ctaTitle} />
     </>
   );
 }

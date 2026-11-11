@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Chapter, Crumbs, Cta, Kick, More, ScrollLink, Ticks, heroBg, two } from "@/components/ui";
-import { IMG, SERVICES, qualsOf, t } from "@/lib/content";
+import { IMG } from "@/lib/content";
+import { getSiteData, qualsOf } from "@/lib/site";
 import { getLang } from "@/lib/page";
 import { alternates, href } from "@/lib/paths";
 
@@ -9,7 +10,7 @@ type Props = { params: Promise<{ lang: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await getLang(params);
-  const d = t(lang);
+  const { d } = await getSiteData(lang);
   return { title: d.nav.services, description: d.servicesPage.lead, alternates: alternates(lang, "/services") };
 }
 
@@ -17,14 +18,15 @@ const CERTS = ["CSWIP 3.1 · 3.2.2", "ASNT Level III", "AINDT Level III", "FROSI
 
 export default async function ServicesPage({ params }: Props) {
   const lang = await getLang(params);
-  const d = t(lang);
+  const site = await getSiteData(lang);
+  const { d } = site;
   const p = d.servicesPage;
 
   return (
     <>
       <section className="hero" style={heroBg(IMG.yard)}>
         <div className="wrap hero-in" style={{ paddingBottom: 110 }}>
-          <Crumbs lang={lang} items={[[d.nav.services]]} />
+          <Crumbs lang={lang} home={d.nav.home} items={[[d.nav.services]]} />
           <Kick>{p.kicker}</Kick>
           <h1 className="h1">{p.title}</h1>
           <p className="lead">{p.lead}</p>
@@ -45,9 +47,9 @@ export default async function ServicesPage({ params }: Props) {
         </div>
       </section>
 
-      {SERVICES.map((s, i) => {
-        const sd = s[lang];
-        const q = qualsOf(s, lang);
+      {site.services.map((s, i) => {
+        const sd = s.t;
+        const q = qualsOf(s);
         return (
           <Chapter
             key={s.slug}
@@ -79,6 +81,7 @@ export default async function ServicesPage({ params }: Props) {
         );
       })}
 
+      {site.hid("services.mech") ? null : (
       <section className="sec alt">
         <div className="wrap g2" style={{ alignItems: "end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -88,8 +91,9 @@ export default async function ServicesPage({ params }: Props) {
           <p className="body">{p.mechText}</p>
         </div>
       </section>
+      )}
 
-      <Cta lang={lang} />
+      <Cta site={site} />
     </>
   );
 }

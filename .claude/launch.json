@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "mkp-prod", "runtimeExecutable": "npx", "runtimeArgs": ["next", "start", "-p", "3100"], "port": 3100 }
+    { "name": "xt-prod", "runtimeExecutable": "env", "runtimeArgs": ["ADMIN_PASSWORD=test123", "npx", "next", "start", "-p", "3100"], "port": 3100 }
   ]
 }

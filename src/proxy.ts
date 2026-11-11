@@ -1,37 +1,47 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { DEFAULT_LANG, LOCALES, isLang, type Lang } from "@/lib/content";
+import { DEFAULT_SETTINGS, LOCALES, isLang, type Lang } from "@/lib/content";
 import { adminEnabled, isAdminAuth } from "@/lib/admin";
+import { readSite } from "@/lib/site";
 
 const COOKIE = "NEXT_LOCALE";
 
-function preferredLang(req: NextRequest): Lang {
+/** Visitor's chosen language (cookie), else the default language set in /admin/settings. */
+async function preferredLang(req: NextRequest): Promise<Lang> {
   const fromCookie = req.cookies.get(COOKIE)?.value;
   if (isLang(fromCookie)) return fromCookie;
-  const accept = req.headers.get("accept-language") || "";
-  for (const part of accept.split(",")) {
-    const code = part.split(";")[0].trim().slice(0, 2).toLowerCase();
-    if (isLang(code)) return code;
-  }
-  return DEFAULT_LANG;
+  try {
+    const dl = (await readSite()).settings.defaultLang;
+    if (isLang(dl)) return dl;
+  } catch {}
+  return DEFAULT_SETTINGS.defaultLang;
 }
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const first = pathname.split("/")[1];
+  const parts = pathname.split("/");
+  const first = parts[1];
+
+  // Admin area: HTTP Basic Auth (user "admin", password ADMIN_PASSWORD).
+  if (first === "admin") {
+    if (adminEnabled() && !isAdminAuth(req.headers.get("authorization"))) {
+      return new NextResponse("Authentication required", {
+        status: 401,
+        headers: { "WWW-Authenticate": 'Basic realm="XT admin", charset="UTF-8"' },
+      });
+    }
+    return NextResponse.next();
+  }
+
+  // Old requests page moved into the admin area.
+  if (parts[2] === "requests" && isLang(first)) {
+    return NextResponse.redirect(new URL("/admin/requests", req.url));
+  }
 
   // Unprefixed path -> redirect to the visitor's language.
   if (!LOCALES.includes(first as Lang)) {
     const url = req.nextUrl.clone();
-    url.pathname = `/${preferredLang(req)}${pathname === "/" ? "" : pathname}`;
+    url.pathname = `/${await preferredLang(req)}${pathname === "/" ? "" : pathname}`;
     return NextResponse.redirect(url);
-  }
-
-  // Requests admin page: HTTP Basic Auth.
-  if (pathname.split("/")[2] === "requests" && adminEnabled() && !isAdminAuth(req.headers.get("authorization"))) {
-    return new NextResponse("Authentication required", {
-      status: 401,
-      headers: { "WWW-Authenticate": 'Basic realm="MKP requests", charset="UTF-8"' },
-    });
   }
 
   const res = NextResponse.next();

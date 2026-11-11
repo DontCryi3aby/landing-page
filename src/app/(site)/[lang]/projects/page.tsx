@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Chapter, Cta, Kick, SubHero, two } from "@/components/ui";
-import { IMG, PROJECTS, t } from "@/lib/content";
+import { Chapter, Clients, Cta, Kick, SubHero, two } from "@/components/ui";
+import { IMG, PROJECTS } from "@/lib/content";
+import { getSiteData } from "@/lib/site";
 import { getLang } from "@/lib/page";
 import { alternates } from "@/lib/paths";
 
@@ -8,18 +9,20 @@ type Props = { params: Promise<{ lang: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = await getLang(params);
-  const d = t(lang);
+  const { d } = await getSiteData(lang);
   return { title: d.nav.projects, description: d.projects.lead, alternates: alternates(lang, "/projects") };
 }
 
 export default async function ProjectsPage({ params }: Props) {
   const lang = await getLang(params);
-  const d = t(lang);
+  const site = await getSiteData(lang);
+  const { d, refs } = site;
   const p = d.projects;
+  const showRefs = !site.hid("projects.refs") && refs.length > 0;
 
   return (
     <>
-      <SubHero lang={lang} img={IMG.safqn} crumbs={[[d.nav.projects]]} kicker={d.nav.projects} title={p.title} lead={p.lead} />
+      <SubHero site={site} img={IMG.safqn} crumbs={[[d.nav.projects]]} kicker={d.nav.projects} title={p.title} lead={p.lead} />
 
       {PROJECTS.featured.map((f, i) => {
         const fd = f[lang];
@@ -48,6 +51,7 @@ export default async function ProjectsPage({ params }: Props) {
         );
       })}
 
+      {showRefs ? (
       <section className="sec alt">
         <div className="wrap">
           <div className="head">
@@ -62,8 +66,8 @@ export default async function ProjectsPage({ params }: Props) {
                 </div>
               ))}
             </div>
-            {PROJECTS.refs[lang].map((r) => (
-              <div className="tr" role="row" key={r[0]}>
+            {refs.map((r, ri) => (
+              <div className="tr" role="row" key={ri}>
                 <div role="cell">{r[0]}</div>
                 {([1, 2, 3] as const).map((k) => (
                   <div role="cell" key={k}>
@@ -76,8 +80,10 @@ export default async function ProjectsPage({ params }: Props) {
           </div>
         </div>
       </section>
+      ) : null}
 
-      <Cta lang={lang} title={p.ctaTitle} />
+      <Clients site={site} alt={!showRefs} />
+      <Cta site={site} title={p.ctaTitle} />
     </>
   );
 }

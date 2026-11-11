@@ -1,11 +1,16 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { locked, readJson, writeJson } from "./json-store";
+
+import { STATUS_ORDER, STATUS_LABEL, statusOf, type Status } from "./status";
+export { STATUS_ORDER, STATUS_LABEL, statusOf, type Status };
 
 export interface RequestItem {
   id: string;
   createdAt: string;
   lang: string;
-  status: "new" | "done";
+  status: Status | "done";
+  statusAt?: string;
+  note?: string;
+  noteAt?: string;
   name: string;
   company: string;
   email: string;
@@ -18,43 +23,23 @@ export interface RequestItem {
   message: string;
 }
 
-const DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
-const FILE = path.join(DIR, "requests.json");
-
-// Serialize writes within this process so concurrent submissions don't clobber each other.
-let queue: Promise<unknown> = Promise.resolve();
-const locked = <T>(fn: () => Promise<T>): Promise<T> => {
-  const run = queue.then(fn, fn);
-  queue = run.catch(() => undefined);
-  return run;
-};
+const FILE = "requests.json";
 
 export async function listRequests(): Promise<RequestItem[]> {
-  try {
-    const raw = JSON.parse(await fs.readFile(FILE, "utf8"));
-    const items: RequestItem[] = Array.isArray(raw) ? raw : [];
-    return items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-  } catch {
-    return [];
-  }
-}
-
-async function write(items: RequestItem[]) {
-  await fs.mkdir(DIR, { recursive: true });
-  const tmp = `${FILE}.${process.pid}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(items, null, 2), "utf8");
-  await fs.rename(tmp, FILE);
+  const raw = await readJson<unknown>(FILE, []);
+  const items: RequestItem[] = Array.isArray(raw) ? raw : [];
+  return items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
 export const addRequest = (item: RequestItem) =>
   locked(async () => {
     const items = await listRequests();
     items.unshift(item);
-    await write(items.slice(0, 1000));
+    await writeJson(FILE, items.slice(0, 1000));
   });
 
-export const toggleRequestStatus = (id: string) =>
+export const updateRequest = (id: string, patch: Partial<Pick<RequestItem, "status" | "statusAt" | "note" | "noteAt">>) =>
   locked(async () => {
     const items = await listRequests();
-    await write(items.map((it) => (it.id === id ? { ...it, status: it.status === "done" ? "new" : "done" } : it)));
+    await writeJson(FILE, items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   });

@@ -1,10 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { SERVICES, isLang, t, type Lang } from "@/lib/content";
-import { addRequest, toggleRequestStatus } from "@/lib/requests-store";
-import { isAdminAuth } from "@/lib/admin";
+import { isLang, type Lang } from "@/lib/content";
+import { addRequest } from "@/lib/requests-store";
+import { getSiteData } from "@/lib/site";
 
 export type FormValues = Record<string, string>;
 export type FormState =
@@ -16,11 +15,12 @@ const FIELDS = ["name", "company", "email", "phone", "discipline", "headcount", 
 const REQUIRED = ["name", "company", "email", "discipline", "message"];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function disciplineLabel(key: string, lang: Lang) {
-  const s = SERVICES.find((x) => x.slug === key);
-  if (s) return s[lang].name;
-  if (key === "mech") return t(lang).contact.mech;
-  if (key === "other") return t(lang).contact.other;
+async function disciplineLabel(key: string, lang: Lang) {
+  const site = await getSiteData(lang);
+  const s = site.services.find((x) => x.slug === key);
+  if (s) return s.t.name;
+  if (key === "mech") return site.d.contact.mech;
+  if (key === "other") return site.d.contact.other;
   return key;
 }
 
@@ -49,7 +49,7 @@ export async function submitRequest(prev: FormState, formData: FormData): Promis
       email: values.email,
       phone: values.phone,
       disciplineKey: values.discipline,
-      discipline: disciplineLabel(values.discipline, lang),
+      discipline: await disciplineLabel(values.discipline, lang),
       headcount: values.headcount,
       location: values.location,
       start: values.start,
@@ -59,13 +59,6 @@ export async function submitRequest(prev: FormState, formData: FormData): Promis
     console.error("[contact] failed to store request", err);
     return { status: "error", n, error: "failed", invalid: [], values };
   }
+  revalidatePath("/admin", "layout");
   return { status: "sent", n, id };
-}
-
-export async function toggleRequest(formData: FormData) {
-  const h = await headers();
-  if (!isAdminAuth(h.get("authorization"))) throw new Error("Unauthorized");
-  const id = String(formData.get("id") ?? "");
-  if (id) await toggleRequestStatus(id);
-  revalidatePath("/[lang]/requests", "page");
 }

@@ -1,27 +1,35 @@
 import Link from "next/link";
-import { EMAIL, PHONE, SERVICES, t, type Lang } from "@/lib/content";
+import { LEGAL_NAME } from "@/lib/content";
 import { href } from "@/lib/paths";
+import type { SiteData } from "@/lib/site";
+import { Brand } from "./ui";
 
-export default function Footer({ lang }: { lang: Lang }) {
-  const d = t(lang);
+export default function Footer({ site }: { site: SiteData }) {
+  const { d, lang, settings, services } = site;
   const contact = href(lang, "/contact");
   return (
     <footer className="ftr">
       <div className="wrap">
         <div className="fgrid">
           <div className="fbrand">
-            <Link className="brand" href={href(lang)}>
-              <b>MKP</b>
-              <span>Technical Services</span>
-            </Link>
+            <Brand
+              to={href(lang)}
+              label={
+                <>
+                  Technical
+                  <br />
+                  Services
+                </>
+              }
+            />
             <p>{d.footer.tag}</p>
           </div>
           <div>
             <h2>{d.nav.services}</h2>
             <ul>
-              {SERVICES.map((s) => (
+              {services.map((s) => (
                 <li key={s.slug}>
-                  <Link href={href(lang, `/services/${s.slug}`)}>{s[lang].name}</Link>
+                  <Link href={href(lang, `/services/${s.slug}`)}>{s.t.name}</Link>
                 </li>
               ))}
             </ul>
@@ -37,14 +45,16 @@ export default function Footer({ lang }: { lang: Lang }) {
           <div>
             <h2>{d.nav.contact}</h2>
             <ul>
-              <li><a href={`mailto:${EMAIL}`}>{EMAIL}</a></li>
-              <li><a href={`tel:${PHONE.replace(/\s/g, "")}`}>{PHONE}</a></li>
+              <li><a href={`mailto:${settings.email}`}>{settings.email}</a></li>
+              <li><a href={`tel:${settings.phone.replace(/\s/g, "")}`}>{settings.phone}</a></li>
               <li><Link href={contact}>{d.footer.city}</Link></li>
             </ul>
           </div>
         </div>
         <div className="fbase">
-          <span>© {new Date().getFullYear()} MKP Technical Services</span>
+          <span>
+            © {new Date().getFullYear()} XT Technical Services · {LEGAL_NAME[lang]}
+          </span>
           <span>{d.footer.base}</span>
         </div>
       </div>

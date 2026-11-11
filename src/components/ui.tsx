@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { PHONE, WA, t, type Lang } from "@/lib/content";
+import { CLIENTS, type Lang } from "@/lib/content";
+import type { SiteData } from "@/lib/site";
 import { href } from "@/lib/paths";
 import { ArrowIcon, CheckIcon, DownIcon } from "./icons";
 
@@ -31,13 +32,13 @@ export const Ticks = ({ items }: { items: string[] }) => (
 );
 
 export const heroBg = (img: string): CSSProperties => ({
-  backgroundImage: `linear-gradient(90deg,rgba(11,29,38,.85) 0%,rgba(11,29,38,.3) 70%),linear-gradient(180deg,rgba(11,29,38,.45) 0%,rgba(11,29,38,.3) 50%,rgba(11,29,38,.92) 88%,#0B1D26 100%),url(${img})`,
+  backgroundImage: `linear-gradient(90deg,rgba(16,43,70,.85) 0%,rgba(16,43,70,.3) 70%),linear-gradient(180deg,rgba(16,43,70,.45) 0%,rgba(16,43,70,.3) 50%,rgba(16,43,70,.92) 88%,#102B46 100%),url(${img})`,
 });
 
-export function Crumbs({ lang, items }: { lang: Lang; items: [string, string?][] }) {
+export function Crumbs({ lang, home, items }: { lang: Lang; home: string; items: [string, string?][] }) {
   return (
     <p className="crumb">
-      <Link href={href(lang)}>{t(lang).nav.home}</Link>
+      <Link href={href(lang)}>{home}</Link>
       {items.map(([label, to]) => (
         <span key={label} style={{ display: "contents" }}>
           <span aria-hidden="true">/</span>
@@ -49,7 +50,7 @@ export function Crumbs({ lang, items }: { lang: Lang; items: [string, string?][]
 }
 
 export function SubHero(props: {
-  lang: Lang;
+  site: SiteData;
   img: string;
   crumbs: [string, string?][];
   kicker: string;
@@ -62,7 +63,7 @@ export function SubHero(props: {
     <section className="hero hero-sm" style={heroBg(props.img)}>
       {props.extra}
       <div className="wrap hero-in">
-        <Crumbs lang={props.lang} items={props.crumbs} />
+        <Crumbs lang={props.site.lang} home={props.site.d.nav.home} items={props.crumbs} />
         <Kick>{props.kicker}</Kick>
         <h1 className="h1">{props.title}</h1>
         {props.lead ? <p className="lead">{props.lead}</p> : null}
@@ -105,8 +106,8 @@ export function Chapter(o: {
   );
 }
 
-export function Cta({ lang, kicker, title, text }: { lang: Lang; kicker?: string; title?: string; text?: string }) {
-  const d = t(lang);
+export function Cta({ site, kicker, title, text }: { site: SiteData; kicker?: string; title?: string; text?: string }) {
+  const { d, lang, settings, waUrl } = site;
   return (
     <section className="cta">
       <div className="wrap">
@@ -118,13 +119,44 @@ export function Cta({ lang, kicker, title, text }: { lang: Lang; kicker?: string
             <Link className="btn" href={href(lang, "/contact")}>
               {d.nav.cta}
             </Link>
-            <a className="btn btn-ghost" href={WA} target="_blank" rel="noopener">
-              WhatsApp {PHONE}
+            <a className="btn btn-ghost" href={waUrl} target="_blank" rel="noopener">
+              WhatsApp {settings.phone}
             </a>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+/** Client list (home + projects); hidden via admin key "home.clients". */
+export function Clients({ site, alt }: { site: SiteData; alt?: boolean }) {
+  if (site.hid("home.clients")) return null;
+  const a = site.d.about;
+  return (
+    <section className={`sec${alt ? " alt" : ""}`}>
+      <div className="wrap">
+        <div className="head">
+          <Kick>{a.clientsKicker}</Kick>
+          <h2 className="h2">{a.clientsTitle}</h2>
+        </div>
+        <ul className="clients">
+          {CLIENTS.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/** Brand mark used in header, footer and admin sidebar. */
+export function Brand({ to, label }: { to: string; label: ReactNode }) {
+  return (
+    <Link className="brand" href={to}>
+      <Image src="/img/xt-logo.png" alt="XT" width={54} height={46} priority />
+      <span>{label}</span>
+    </Link>
   );
 }
 
